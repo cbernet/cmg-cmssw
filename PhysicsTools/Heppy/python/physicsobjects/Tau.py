@@ -44,10 +44,11 @@ class Tau(Lepton):
             vertex = self.associatedVertex
         # x/y/z are directly saved in the tau object instead of a reference to 
         # the PV
-        if abs(vertex.z() - self.vertex().z()) < 0.0001:
-            return self.physObj.dxy()
-        else:
-            return self.dxy_approx(vertex)
+        return self.leadChargedHadrCand().dxy()
+        # if abs(vertex.z() - self.vertex().z()) < 0.0001:
+        #     return self.physObj.dxy()
+        # else:
+        #     return self.dxy_approx(vertex)
 
     def dz(self, vertex=None):
         if vertex is None:
