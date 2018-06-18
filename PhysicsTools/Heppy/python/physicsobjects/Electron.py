@@ -395,6 +395,10 @@ class Electron( Lepton ):
             else: raise RuntimeError, "Ele MVA ID type not found"
 
     def dEtaInSeed(self):
+        dofunc = True
+        import pdb ; pdb.set_trace()
+        if not dofunc:
+            return 0.
         if self.physObj.superCluster().isNonnull() and self.physObj.superCluster().seed().isNonnull(): return self.physObj.deltaEtaSuperClusterTrackAtVtx() - self.physObj.superCluster().eta() + self.physObj.superCluster().seed().eta()
         else: return sys.float_info.max
 
