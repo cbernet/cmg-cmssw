@@ -380,6 +380,8 @@ class Electron( Lepton ):
                     _low = [0.77,0.56,0.48]
                     _vlow = _low
                     _high = [0.52,0.11,-0.01]
+                elif wp in ["POG_SPRING16_25ns_v1_Veto","POG_SPRING16_25ns_v1_Loose"]:
+                    return self.cutBasedId(wp)
                 if not smooth_cut: raise RuntimeError, "Ele MVA ID Working point not found"
                 val = self.mvaRun2(name+'GP') if self.pt()>10 else self.mvaRun2(name+'HZZ')
                 if self.pt()<=10:
