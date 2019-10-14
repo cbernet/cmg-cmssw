@@ -32,6 +32,8 @@ class Chain( object ):
            print event.var1
     """
 
+    tree_name = None
+
     def __init__(self, input, tree_name=None):
         """
         Create a chain.
@@ -58,7 +60,10 @@ class Chain( object ):
                 err += pprint.pformat(self.files)
                 raise ValueError(err)
         if tree_name is None:
-            tree_name = self._guessTreeName(input)
+            if self.__class__.tree_name: 
+                tree_name = self.__class__.tree_name
+            else:
+                tree_name = self._guessTreeName(input)
         self.chain = TChain(tree_name)
         for file in self.files:
             self.chain.Add(file)
@@ -72,7 +77,8 @@ class Chain( object ):
         """
         names = []
         for fnam in self.files:
-            rfile = TFile(fnam)
+            # import pdb; pdb.set_trace()
+            rfile = TFile.Open(fnam)
             for key in rfile.GetListOfKeys():
                 obj = rfile.Get(key.GetName())
                 if type(obj) is TTree:
@@ -80,6 +86,8 @@ class Chain( object ):
         thename = set(names)
         if len(thename)==1:
             return list(thename)[0]
+        elif 'Events' in thename:
+            return 'Events'
         else:
             err = [
                 'several TTree keys in {pattern}:'.format(
