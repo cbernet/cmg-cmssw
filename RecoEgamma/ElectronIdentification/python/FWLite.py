@@ -2,9 +2,84 @@ import ROOT
 import ctypes
 import pprint
 from numpy import exp
+import sys
+
+from PhysicsTools.Heppy.physicsutils.EffectiveAreas import effective_area_table, effective_area, areas
 
 # Python wrappers around the Electron MVAs.
 # Usage example in RecoEgamma/ElectronIdentification/test
+
+class ElectronCutBasedID(object):
+    """ Electron cut based ID wrapper class. Allows testing cut based ID working points
+    with python.
+    """
+    def __init__(self, name, tag, working_points):
+        self.name = name 
+        self.tag = tag
+        self.working_points = working_points
+
+    def passed(self, ele, rho, wp):
+        '''return true if the electron passes the cut based ID working point.
+        see https://twiki.cern.ch/twiki/bin/viewauth/CMS/CutBasedElectronIdentificationRun2#Offline_selection_criteria_for_V
+        
+        ele: a reco::GsfElectron
+        rho: energy density in the event
+        wp: working point to test
+
+        example: 
+        
+            event.getByLabel(('slimmedElectrons'),                 ele_handle)
+            event.getByLabel(('fixedGridRhoFastjetAll'),           rho_handle)
+            
+            electrons = ele_handle.product()
+            rho       = rho_handle.product()
+
+            is_veto = passed(electron[0], rho,'cutBasedElectronID-Fall17-94X-V2-veto')
+        '''
+        if ele.isEB():
+            WP = self.working_points[wp][0]
+        else:
+            WP = self.working_points[wp][1]
+        isoInputs = self.working_points[wp][2]
+
+        full5x5_sigmaIetaIeta = ele.full5x5_sigmaIetaIeta()
+
+        dEtaInSeed = sys.float_info.max
+        if ele.superCluster().isNonnull() and ele.superCluster().seed().isNonnull():
+            dEtaInSeed = ele.deltaEtaSuperClusterTrackAtVtx() - ele.superCluster().eta() + ele.superCluster().seed().eta()
+
+        dPhiIn = ele.deltaPhiSuperClusterTrackAtVtx()
+
+        h_over_e = ele.hadronicOverEm()
+        h_over_e_cut = WP.hOverECut_C0 + WP.hOverECut_CE / ele.superCluster().energy() + WP.hOverECut_Cr * rho / ele.superCluster().energy()
+
+        pfIso = ele.pfIsolationVariables()
+        chad = pfIso.sumChargedHadronPt
+        nhad = pfIso.sumNeutralHadronEt
+        pho  = pfIso.sumPhotonEt
+        area_key = [key for key in areas.keys() if key in WP.idName][0]
+        ea_table = effective_area_table(ele, area_key)
+        eA  = effective_area(ele, '03', ea_table)
+        iso  = chad + max([0.0, nhad + pho - rho*eA])
+        relIsoWithEA = iso/ele.pt()
+        relIsoWithEA_cut = WP.relCombIsolationWithEACut_C0+WP.relCombIsolationWithEACut_Cpt/ele.pt()
+
+        ecal_energy_inverse = 1.0/ele.ecalEnergy()
+        eSCoverP = ele.eSuperClusterOverP()
+        absEInverseMinusPInverse = abs(1.0 - eSCoverP)*ecal_energy_inverse
+            
+        missingHits = ele.gsfTrack().hitPattern().numberOfLostHits(ROOT.reco.HitPattern.MISSING_INNER_HITS)
+
+        if full5x5_sigmaIetaIeta < WP.full5x5_sigmaIEtaIEtaCut and \
+                abs(dEtaInSeed) < WP.dEtaInSeedCut and \
+                abs(dPhiIn) < WP.dPhiInCut and \
+                h_over_e < h_over_e_cut and \
+                relIsoWithEA < relIsoWithEA_cut and \
+                absEInverseMinusPInverse < WP.absEInverseMinusPInverseCut and \
+                missingHits <= WP.missingHitsCut and \
+                ele.passConversionVeto() :
+                return True
+        return False
 
 class ElectronMVAID:
     """ Electron MVA wrapper class.
@@ -110,6 +185,44 @@ from RecoEgamma.ElectronIdentification.Identification.mvaElectronID_Fall17_iso_V
 from RecoEgamma.ElectronIdentification.Identification.mvaElectronID_Fall17_noIso_V2_cff \
         import workingPoints as Fall17_noIso_V2_workingPoints
 
+from RecoEgamma.ElectronIdentification.Identification.cutBasedElectronID_Fall17_94X_V2_cff \
+        import WP_Veto_EB as cutBasedElectronID_Fall17_94X_V2_WP_Veto_EB
+from RecoEgamma.ElectronIdentification.Identification.cutBasedElectronID_Fall17_94X_V2_cff \
+        import WP_Veto_EE as cutBasedElectronID_Fall17_94X_V2_WP_Veto_EE
+
+from RecoEgamma.ElectronIdentification.Identification.cutBasedElectronID_Fall17_94X_V2_cff \
+        import WP_Loose_EB as cutBasedElectronID_Fall17_94X_V2_WP_Loose_EB
+from RecoEgamma.ElectronIdentification.Identification.cutBasedElectronID_Fall17_94X_V2_cff \
+        import WP_Loose_EE as cutBasedElectronID_Fall17_94X_V2_WP_Loose_EE
+
+from RecoEgamma.ElectronIdentification.Identification.cutBasedElectronID_Fall17_94X_V2_cff \
+        import WP_Medium_EB as cutBasedElectronID_Fall17_94X_V2_WP_Medium_EB
+from RecoEgamma.ElectronIdentification.Identification.cutBasedElectronID_Fall17_94X_V2_cff \
+        import WP_Medium_EE as cutBasedElectronID_Fall17_94X_V2_WP_Medium_EE
+
+from RecoEgamma.ElectronIdentification.Identification.cutBasedElectronID_Fall17_94X_V2_cff \
+        import WP_Tight_EB as cutBasedElectronID_Fall17_94X_V2_WP_Tight_EB
+from RecoEgamma.ElectronIdentification.Identification.cutBasedElectronID_Fall17_94X_V2_cff \
+        import WP_Tight_EE as cutBasedElectronID_Fall17_94X_V2_WP_Tight_EE
+
+from RecoEgamma.ElectronIdentification.Identification.cutBasedElectronID_Fall17_94X_V2_cff \
+        import isoInputs as cutBasedElectronID_Fall17_94X_V2_isoInputs
+
+cutBasedElectronID_Fall17_94X_V2_wps = dict(
+    veto   = (cutBasedElectronID_Fall17_94X_V2_WP_Veto_EB,
+              cutBasedElectronID_Fall17_94X_V2_WP_Veto_EE,
+              cutBasedElectronID_Fall17_94X_V2_isoInputs),
+    loose  = (cutBasedElectronID_Fall17_94X_V2_WP_Loose_EB,
+              cutBasedElectronID_Fall17_94X_V2_WP_Loose_EE,
+              cutBasedElectronID_Fall17_94X_V2_isoInputs),
+    medium = (cutBasedElectronID_Fall17_94X_V2_WP_Medium_EB,
+              cutBasedElectronID_Fall17_94X_V2_WP_Medium_EE,
+              cutBasedElectronID_Fall17_94X_V2_isoInputs),
+    tight  = (cutBasedElectronID_Fall17_94X_V2_WP_Tight_EB,
+              cutBasedElectronID_Fall17_94X_V2_WP_Tight_EE,
+              cutBasedElectronID_Fall17_94X_V2_isoInputs),
+)
+
 # Dictionary with the relecant e/gmma MVAs
 
 electron_mvas = {
@@ -134,3 +247,8 @@ working_points = {
                                     mvaSpring16GP_V1_workingPoints, logistic_transform=True),
 
     }
+
+electron_cut_based_IDs = {
+    "Fall1794XV2"   : ElectronCutBasedID("ElectronMVAEstimatorRun2","Fall1794XV2",
+                                         cutBasedElectronID_Fall17_94X_V2_wps),
+}
